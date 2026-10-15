@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SimPony 驾驶模拟器</title>
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <div id="viewport">
+      <div id="cam-bar">
+        <button data-cam="top">俯视 [1]</button>
+        <button data-cam="adv">ADV [2]</button>
+        <button data-cam="third">第三人称 [3]</button>
+      </div>
+      <div id="hint">
+        路径编辑：拖动控制点 · 双击路面添加 · 右键删除 · 按住 Shift 取消车道吸附
+      </div>
+      <div id="status"></div>
+    </div>
+    <div id="bottom">
+      <div id="timeline">
+        <button id="btn-play">▶</button>
+        <button id="btn-reset">⏮</button>
+        <input id="time-slider" type="range" min="0" max="1" step="0.001" value="0" />
+        <span id="time-label">0.00 s</span>
+        <select id="speed-select">
+          <option value="0.25">0.25x</option>
+          <option value="0.5">0.5x</option>
+          <option value="1" selected>1x</option>
+          <option value="2">2x</option>
+          <option value="4">4x</option>
+        </select>
+      </div>
+      <canvas id="st-canvas"></canvas>
+    </div>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

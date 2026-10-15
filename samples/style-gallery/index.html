@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SimPony 渲染风格样本</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #000;
+    font-family: system-ui, "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; }
+  #panel { position: fixed; top: 12px; left: 12px; width: 320px; padding: 12px 14px;
+    background: rgba(18, 20, 26, 0.8); color: #e8e8e8; border-radius: 10px;
+    backdrop-filter: blur(6px); font-size: 13px; line-height: 1.55; }
+  #panel h1 { font-size: 15px; margin: 0 0 10px; }
+  #btns { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  #btns button { flex: 1 1 45%; padding: 6px 8px; border: 1px solid #555; background: #2a2d36;
+    color: #ddd; border-radius: 6px; cursor: pointer; font-size: 12px; }
+  #btns button.active { background: #4a7dff; border-color: #4a7dff; color: #fff; }
+  #desc b { color: #fff; }
+  #desc .k { color: #9ab; }
+  #hint { margin-top: 10px; color: #8a8f99; font-size: 12px; }
+</style>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+  <div id="panel">
+    <h1>SimPony 渲染风格样本</h1>
+    <div id="btns"></div>
+    <div id="desc"></div>
+    <div id="hint">按键 1-5 切换风格 · F 跟随 ADV · 空格 暂停<br/>左键旋转 · 右键平移 · 滚轮缩放</div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>
