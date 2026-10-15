@@ -16,6 +16,7 @@ export interface PathEditorHost {
   /** live = true while dragging. */
   changed(live: boolean): void;
   setActive(index: number): void;
+  enabled?(): boolean;
 }
 
 const SNAP_DIST = 0.6;
@@ -66,6 +67,7 @@ export class PathEditor {
   }
 
   private onDown = (e: PointerEvent) => {
+    if (this.host.enabled && !this.host.enabled()) return;
     const i = this.pickHandle(e);
     if (i < 0) return;
     e.stopImmediatePropagation();
@@ -110,6 +112,7 @@ export class PathEditor {
   };
 
   private onDblClick = (e: MouseEvent) => {
+    if (this.host.enabled && !this.host.enabled()) return;
     const pts = this.host.points();
     if (pts.length < 2) return; // static objects have a single point; move by dragging
     const f = this.groundFrenet(e, !e.shiftKey);

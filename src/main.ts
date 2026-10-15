@@ -75,6 +75,7 @@ class App {
       handles: () => this.view.handleGroup,
       ref: () => this.ref,
       road: () => this.scn.road,
+      enabled: () => this.rig.mode !== 'adv',
       points: () => this.selectedSpec().path,
       lockCamera: (on) => this.rig.lock(on),
       changed: () => (this.dirty = true),
@@ -224,6 +225,10 @@ class App {
 
   private setCamera(m: CameraMode) {
     this.rig.setMode(m);
+    this.view.handleGroup.visible = m !== 'adv';
+    $('hint').textContent = m === 'adv'
+      ? '车内视角：左键拖动环顾驾驶舱 · 双击回正 · 仪表显示实际车速与转角'
+      : '路径编辑：拖动控制点 · 双击路面添加 · 右键删除 · 按住 Shift 取消车道吸附';
     document.querySelectorAll<HTMLButtonElement>('#cam-bar button').forEach((b) => b.classList.toggle('active', b.dataset.cam === m));
   }
 
@@ -471,7 +476,7 @@ class App {
     const f = frameAt(this.sim, this.time);
     this.view.updateFrame(f, this.opts, this.selected);
     const c = this.advCenter(f.adv.x, f.adv.y, f.adv.yaw);
-    this.rig.update(c, this.scn.adv.vehicle.wheelbase, timeMoved);
+    this.rig.update(c, this.scn.adv.vehicle, timeMoved);
 
     this.renderer.render(this.view.scene, this.rig.active);
 

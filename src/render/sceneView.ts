@@ -2,8 +2,9 @@ import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { ReferenceLine } from '../core/referenceLine';
 import type { CompiledScenario } from '../core/scenario';
-import type { AgentSpec, RoadSpec, VehicleParams } from '../core/types';
+import type { AgentSpec, RoadSpec } from '../core/types';
 import type { SimFrame, SimResult } from '../sim/simulate';
+import { AgentVisual } from './agentVisual';
 import { frenetRibbon, polylineRibbon, toThree } from './geometry';
 import { MaterialLibrary, type Role, type StylePreset } from './styles';
 
@@ -17,94 +18,22 @@ function rng(seed: number) {
 }
 
 function disposeGroup(g: THREE.Object3D) {
+  const materials = new Set<THREE.Material>();
   g.traverse((o) => {
-    if ((o as THREE.Mesh).isMesh) (o as THREE.Mesh).geometry.dispose();
-  });
-  g.clear();
-}
-
-/** Visual for a car / cone; group origin = rear axle reference point. */
-class AgentVisual {
-  readonly group = new THREE.Group();
-  private readonly bodyMeshes: THREE.Mesh[] = [];
-  private readonly frontPivots: THREE.Object3D[] = [];
-  private colliding = false;
-
-  constructor(
-    private readonly view: SceneView,
-    spec: Pick<AgentSpec, 'kind' | 'vehicle'>,
-    private readonly bodyRole: Role,
-    ghost = false,
-  ) {
-    const vp = spec.vehicle;
-    const role = (r: Role): Role => (ghost ? 'ghost' : r);
-    const cast = !ghost;
-    if (spec.kind === 'cone') {
-      const off = vp.length / 2 - vp.rearOverhang;
-      const cone = view.mk(new THREE.ConeGeometry(vp.width * 0.45, vp.height, 10), role('coneBody'), cast);
-      cone.position.set(off, vp.height / 2, 0);
-      const base = view.mk(new THREE.BoxGeometry(vp.width, 0.06, vp.width), role('coneBody'), cast);
-      base.position.set(off, 0.03, 0);
-      this.group.add(cone, base);
-      this.bodyMeshes.push(cone, base);
-      return;
-    }
-    this.buildCar(vp, role, cast, spec.kind === 'adv');
-  }
-
-  private buildCar(vp: VehicleParams, role: (r: Role) => Role, cast: boolean, isAdv: boolean) {
-    const wr = 0.36;
-    const off = vp.length / 2 - vp.rearOverhang;
-    const bodyH = vp.height * 0.45;
-    const bodyY = 0.28 + bodyH / 2;
-    const body = this.view.mk(new THREE.BoxGeometry(vp.length, bodyH, vp.width), role(this.bodyRole), cast);
-    body.position.set(off, bodyY, 0);
-    const cabinH = vp.height - 0.28 - bodyH;
-    const cabin = this.view.mk(new THREE.BoxGeometry(vp.length * 0.5, cabinH * 0.85, vp.width * 0.88), role('glass'), cast);
-    cabin.position.set(off - vp.length * 0.06, 0.28 + bodyH + (cabinH * 0.85) / 2, 0);
-    const roof = this.view.mk(new THREE.BoxGeometry(vp.length * 0.46, cabinH * 0.15, vp.width * 0.84), role(this.bodyRole), cast);
-    roof.position.set(off - vp.length * 0.06, 0.28 + bodyH + cabinH * 0.85 + (cabinH * 0.15) / 2, 0);
-    this.group.add(body, cabin, roof);
-    this.bodyMeshes.push(body, roof);
-
-    const wheelGeo = new THREE.CylinderGeometry(wr, wr, 0.28, 14).rotateX(Math.PI / 2);
-    const zw = vp.width / 2 - 0.16;
-    for (const x of [0, vp.wheelbase]) {
-      for (const z of [zw, -zw]) {
-        const w = this.view.mk(wheelGeo, role('wheel'), cast);
-        if (x > 0) {
-          const pivot = new THREE.Group();
-          pivot.position.set(x, wr, z);
-          pivot.add(w);
-          this.frontPivots.push(pivot);
-          this.group.add(pivot);
-        } else {
-          w.position.set(x, wr, z);
-          this.group.add(w);
-        }
+    const m = o as THREE.Mesh;
+    if (m.isMesh) {
+      m.geometry.dispose();
+      if (m.userData.ownedMaterial) {
+        const list = Array.isArray(m.material) ? m.material : [m.material];
+        list.forEach((material) => materials.add(material));
       }
     }
-    if (isAdv) {
-      const lidar = this.view.mk(new THREE.CylinderGeometry(0.25, 0.28, 0.3, 16), role('advAccent'), cast);
-      lidar.position.set(off - vp.length * 0.06, vp.height + 0.15, 0);
-      this.group.add(lidar);
-    }
-  }
-
-  setPose(x: number, y: number, yaw: number, steer = 0) {
-    this.group.position.copy(toThree(x, y));
-    this.group.rotation.y = yaw;
-    for (const p of this.frontPivots) p.rotation.y = steer;
-  }
-
-  setColliding(on: boolean) {
-    if (on === this.colliding) return;
-    this.colliding = on;
-    for (const m of this.bodyMeshes) {
-      m.userData.role = on ? 'collision' : this.bodyRole;
-      m.material = this.view.lib.get(m.userData.role);
-    }
-  }
+  });
+  materials.forEach((material) => {
+    (material as THREE.MeshBasicMaterial).map?.dispose();
+    material.dispose();
+  });
+  g.clear();
 }
 
 export interface OverlayOptions {
@@ -262,7 +191,7 @@ export class SceneView {
 
   updateFrame(f: SimFrame, opts: OverlayOptions, selectedObstacle: number) {
     if (!this.adv || !this.ghost) return;
-    this.adv.setPose(f.adv.x, f.adv.y, f.adv.yaw, f.adv.steer);
+    this.adv.setPose(f.adv.x, f.adv.y, f.adv.yaw, f.adv.steer, f.adv.v, f.adv.a);
     this.adv.setColliding(f.collisions.length > 0);
     const ghostOn = opts.showGhost && (Math.abs(f.adv.latErr) > 0.01 || Math.abs(f.adv.lonErr) > 0.01);
     this.ghost.group.visible = ghostOn;

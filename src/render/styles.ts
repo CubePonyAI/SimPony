@@ -16,6 +16,14 @@ export type Role =
   | 'coneBody'
   | 'glass'
   | 'wheel'
+  | 'metal'
+  | 'trim'
+  | 'interior'
+  | 'seat'
+  | 'headlight'
+  | 'taillight'
+  | 'reflector'
+  | 'mirror'
   | 'leaf'
   | 'trunk'
   | 'building'
@@ -62,6 +70,14 @@ export const LOW_POLY: StylePreset = {
     coneBody: 0xfb8500,
     glass: 0xd6eef8,
     wheel: 0x4a4a55,
+    metal: 0xbac6d1,
+    trim: 0x242e38,
+    interior: 0x344451,
+    seat: 0x887969,
+    headlight: 0xfff4ce,
+    taillight: 0xf04450,
+    reflector: 0xfff7e7,
+    mirror: 0xaccbd8,
     leaf: 0x6cc08b,
     trunk: 0xb08968,
     building: 0xf7e1d7,
@@ -76,6 +92,16 @@ export const LOW_POLY: StylePreset = {
     selection: 0x2a9d8f,
   },
   material(role, color) {
+    if (role === 'glass') {
+      return new THREE.MeshPhysicalMaterial({ color, transparent: true, opacity: 0.16,
+        roughness: 0.12, metalness: 0.05, side: THREE.DoubleSide, depthWrite: false });
+    }
+    if (role === 'headlight' || role === 'taillight') {
+      return new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.5, roughness: 0.3 });
+    }
+    if (role === 'metal' || role === 'mirror') {
+      return new THREE.MeshStandardMaterial({ color, metalness: 0.55, roughness: 0.25 });
+    }
     if (role === 'ghost') {
       return new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.35, depthWrite: false });
     }

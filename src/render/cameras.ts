@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { Pose2 } from '../sim/simulate';
+import type { VehicleParams } from '../core/types';
 import { toThree } from './geometry';
 
 export type CameraMode = 'top' | 'adv' | 'third';
@@ -25,6 +26,8 @@ export class CameraRig {
   private readonly topViewHeight = 90;
   private lastTarget: THREE.Vector3 | null = null;
   private interactionLock = false;
+  private lookYaw = 0;
+  private lookPitch = 0;
 
   constructor(dom: HTMLElement, aspect: number) {
     const h = this.topViewHeight / 2;
@@ -38,7 +41,7 @@ export class CameraRig {
     this.topCtl.minZoom = 0.2;
     this.topCtl.maxZoom = 8;
 
-    this.adv = new THREE.PerspectiveCamera(70, aspect, 0.1, 1000);
+    this.adv = new THREE.PerspectiveCamera(75, aspect, 0.025, 1000);
     this.adv.rotation.order = 'YXZ';
 
     this.third = new THREE.PerspectiveCamera(50, aspect, 0.3, 1500);
@@ -47,6 +50,25 @@ export class CameraRig {
     this.thirdCtl.maxPolarAngle = Math.PI * 0.495;
     this.thirdCtl.minDistance = 4;
     this.thirdCtl.maxDistance = 300;
+    // Drag in cockpit view to inspect mirrors / cabin. Double-click to face forward.
+    let drag: { id: number; x: number; y: number } | undefined;
+    dom.addEventListener('pointerdown', (e) => {
+      if (this.mode !== 'adv' || e.button !== 0) return;
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY };
+      dom.setPointerCapture(e.pointerId);
+    });
+    dom.addEventListener('pointermove', (e) => {
+      if (!drag || this.mode !== 'adv') return;
+      this.lookYaw = THREE.MathUtils.clamp(this.lookYaw - (e.clientX - drag.x) * 0.004, -2.4, 2.4);
+      this.lookPitch = THREE.MathUtils.clamp(this.lookPitch - (e.clientY - drag.y) * 0.003, -0.65, 0.55);
+      drag.x = e.clientX; drag.y = e.clientY;
+    });
+    const release = () => { drag = undefined; };
+    dom.addEventListener('pointerup', release);
+    dom.addEventListener('pointercancel', release);
+    dom.addEventListener('dblclick', () => {
+      if (this.mode === 'adv') this.lookYaw = this.lookPitch = 0;
+    });
     this.setMode('third');
   }
 
@@ -96,7 +118,7 @@ export class CameraRig {
   }
 
   /** Per-frame update; `advCenter` is the ADV body center pose. `follow`: carry orbit cameras along with ADV motion. */
-  update(advCenter: Pose2, wheelbase: number, follow = true) {
+  update(advCenter: Pose2, vehicle: VehicleParams, follow = true) {
     const c = toThree(advCenter.x, advCenter.y, 1);
     if (this.lastTarget && follow) {
       const d = c.clone().sub(this.lastTarget);
@@ -112,12 +134,12 @@ export class CameraRig {
     this.lastTarget = c;
 
     // Driver seat: slightly behind body center, left side (left-hand drive), eye height.
-    const fwd = -wheelbase * 0.1;
-    const left = 0.38;
+    const fwd = -0.32 * vehicle.length / 4.8;
+    const left = 0.43 * vehicle.width / 1.9;
     const cx = advCenter.x + Math.cos(advCenter.yaw) * fwd - Math.sin(advCenter.yaw) * left;
     const cy = advCenter.y + Math.sin(advCenter.yaw) * fwd + Math.cos(advCenter.yaw) * left;
-    this.adv.position.copy(toThree(cx, cy, 1.3));
-    this.adv.rotation.set(-0.06, advCenter.yaw - Math.PI / 2, 0);
+    this.adv.position.copy(toThree(cx, cy, 1.24 * vehicle.height / 1.5));
+    this.adv.rotation.set(-0.12 + this.lookPitch, advCenter.yaw - Math.PI / 2 + this.lookYaw, 0);
 
     this.topCtl.update();
     this.thirdCtl.update();
